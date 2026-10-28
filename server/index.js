@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -107,6 +108,50 @@ app.delete('/api/conversations/:id', async (req, res) => {
   } catch (err) {
     console.error('Error deleting conversation:', err);
     res.status(500).json({ error: 'Failed to delete conversation' });
+  }
+});
+
+// --- Notes Endpoints ---
+// Get all saved notes
+app.get('/api/notes', async (req, res) => {
+  try {
+    const notes = await Storage.getAllNotes();
+    res.json(notes);
+  } catch (err) {
+    console.error('Error fetching notes:', err);
+    res.status(500).json({ error: 'Failed to retrieve notes' });
+  }
+});
+
+// Save AI response to notes
+app.post('/api/notes', async (req, res) => {
+  try {
+    const { content, sourceConversationId } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Note content cannot be empty' });
+    }
+    const note = await Storage.createNote({
+      content: content.trim(),
+      sourceConversationId
+    });
+    res.status(201).json(note);
+  } catch (err) {
+    console.error('Error creating note:', err);
+    res.status(500).json({ error: 'Failed to save note' });
+  }
+});
+
+// Delete a saved note
+app.delete('/api/notes/:id', async (req, res) => {
+  try {
+    const deleted = await Storage.deleteNote(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    res.json({ success: true, message: 'Note deleted' });
+  } catch (err) {
+    console.error('Error deleting note:', err);
+    res.status(500).json({ error: 'Failed to delete note' });
   }
 });
 

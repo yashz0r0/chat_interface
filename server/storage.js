@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { Conversation } from './models/Conversation.js';
+import { Note } from './models/Note.js';
 
 // Configure reliable DNS servers to resolve MongoDB Atlas SRV records
 try {
@@ -15,6 +16,7 @@ try {
 let isMongoConnected = false;
 const DATA_DIR = path.resolve('./data');
 const DATA_FILE = path.join(DATA_DIR, 'conversations.json');
+const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
 
 // Ensure local fallback data dir exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -37,6 +39,25 @@ function writeFallbackData(data) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
     console.error('Error writing fallback storage:', err.message);
+  }
+}
+
+function readFallbackNotes() {
+  try {
+    if (fs.existsSync(NOTES_FILE)) {
+      return JSON.parse(fs.readFileSync(NOTES_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error reading fallback notes:', err.message);
+  }
+  return [];
+}
+
+function writeFallbackNotes(data) {
+  try {
+    fs.writeFileSync(NOTES_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error writing fallback notes:', err.message);
   }
 }
 
@@ -174,6 +195,46 @@ export const Storage = {
     const removed = filtered.length !== data.length;
     if (removed) {
       writeFallbackData(filtered);
+    }
+    return removed;
+  },
+
+  async getAllNotes() {
+    if (isMongoConnected) {
+      return await Note.find({}).sort({ createdAt: -1 }).lean();
+    }
+    const data = readFallbackNotes();
+    return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  async createNote({ content, sourceConversationId }) {
+    if (isMongoConnected) {
+      const note = new Note({ content, sourceConversationId });
+      await note.save();
+      return note.toObject();
+    }
+    const data = readFallbackNotes();
+    const newNote = {
+      _id: crypto.randomBytes(12).toString('hex'),
+      content,
+      sourceConversationId,
+      createdAt: new Date().toISOString()
+    };
+    data.unshift(newNote);
+    writeFallbackNotes(data);
+    return newNote;
+  },
+
+  async deleteNote(id) {
+    if (isMongoConnected) {
+      const result = await Note.findByIdAndDelete(id);
+      return !!result;
+    }
+    const data = readFallbackNotes();
+    const filtered = data.filter((n) => String(n._id) !== String(id));
+    const removed = filtered.length !== data.length;
+    if (removed) {
+      writeFallbackNotes(filtered);
     }
     return removed;
   }

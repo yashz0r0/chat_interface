@@ -6,6 +6,7 @@ import ChatInput from './components/ChatInput.jsx';
 
 export default function App() {
   const [conversations, setConversations] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -27,11 +28,54 @@ export default function App() {
     scrollToBottom();
   }, [messages, isStreaming]);
 
-  // Load conversations list and backend status on mount
+  // Load conversations list, notes, and backend status on mount
   useEffect(() => {
     fetchBackendStatus();
     loadConversations();
+    loadNotes();
   }, []);
+
+  const loadNotes = async () => {
+    try {
+      const res = await fetch('/api/notes');
+      if (res.ok) {
+        const data = await res.json();
+        setNotes(data);
+      }
+    } catch (err) {
+      console.error('Failed to load notes:', err);
+    }
+  };
+
+  const handleSaveNote = async (content) => {
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          sourceConversationId: activeId
+        })
+      });
+      if (res.ok) {
+        const newNote = await res.json();
+        setNotes((prev) => [newNote, ...prev]);
+      }
+    } catch (err) {
+      console.error('Failed to save note:', err);
+    }
+  };
+
+  const handleDeleteNote = async (id) => {
+    try {
+      const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setNotes((prev) => prev.filter((n) => n._id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+    }
+  };
 
   // Keyboard shortcut Ctrl+K / Cmd+K for new chat
   useEffect(() => {
@@ -217,10 +261,12 @@ export default function App() {
     <div className="app-layout">
       <Sidebar
         conversations={conversations}
+        notes={notes}
         activeId={activeId}
         onSelectConversation={handleSelectConversation}
         onNewChat={handleNewChat}
         onDeleteConversation={handleDeleteConversation}
+        onDeleteNote={handleDeleteNote}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         backendStatus={backendStatus}
@@ -314,6 +360,7 @@ export default function App() {
                     key={index}
                     message={msg}
                     isStreaming={isLastAssistant}
+                    onSaveNote={handleSaveNote}
                   />
                 );
               })}

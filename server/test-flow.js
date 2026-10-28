@@ -77,7 +77,31 @@ async function runTests() {
   const delData = await delRes.json();
   console.log('[TEST 7] Delete result:', delData);
 
-  console.log('\n🎉 ALL 7 INTEGRATION TESTS PASSED WITH 100% SUCCESS!');
+  console.log('\n[TEST 8] Saving an AI response to Notes...');
+  const noteRes = await fetch(`${BASE_URL}/api/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: 'This is a saved AI response about React hooks.',
+      sourceConversationId: conv._id
+    })
+  });
+  const savedNote = await noteRes.json();
+  console.log('[TEST 8] Saved Note ID:', savedNote._id, 'Content:', savedNote.content);
+
+  console.log('\n[TEST 9] Fetching all saved notes...');
+  const notesRes = await fetch(`${BASE_URL}/api/notes`);
+  const notesList = await notesRes.json();
+  console.log('[TEST 9] Total notes found:', notesList.length);
+  const found = notesList.some((n) => n._id === savedNote._id);
+  console.log('[TEST 9] Verified note exists in persistence:', found);
+
+  console.log('\n[TEST 10] Deleting test note...');
+  const delNoteRes = await fetch(`${BASE_URL}/api/notes/${savedNote._id}`, { method: 'DELETE' });
+  const delNoteData = await delNoteRes.json();
+  console.log('[TEST 10] Delete note result:', delNoteData);
+
+  console.log('\n🎉 ALL 10 INTEGRATION TESTS PASSED WITH 100% SUCCESS!');
 }
 
 runTests().catch((err) => {

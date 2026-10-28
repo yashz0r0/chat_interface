@@ -6,14 +6,23 @@ function formatMessageTime(dateString) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function MessageItem({ message, isStreaming }) {
+export default function MessageItem({ message, isStreaming, onSaveNote }) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const handleCopy = () => {
+    if (!message.content) return;
     navigator.clipboard?.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSave = () => {
+    if (!message.content || !onSaveNote) return;
+    onSaveNote(message.content);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -43,27 +52,61 @@ export default function MessageItem({ message, isStreaming }) {
               {message.content}
               {isStreaming && <span className="streaming-cursor" />}
             </div>
+          </div>
 
-            {!isStreaming && message.content && (
+          {/* Action buttons below AI response */}
+          {!isUser && !isStreaming && message.content && (
+            <div className="message-actions">
               <button
-                className="copy-button"
+                type="button"
+                className={`action-btn ${copied ? 'copied' : ''}`}
                 onClick={handleCopy}
-                title="Copy message to clipboard"
+                title="Copy response to clipboard"
               >
                 {copied ? (
-                  <span className="copied-text">Copied!</span>
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span>Copied!</span>
+                  </>
                 ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    <span>Copy</span>
+                  </>
                 )}
               </button>
-            )}
-          </div>
+
+              <button
+                type="button"
+                className={`action-btn ${saved ? 'saved' : ''}`}
+                onClick={handleSave}
+                title="Save response to notes"
+              >
+                {saved ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span>Saved to Notes!</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>Save to Notes</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
